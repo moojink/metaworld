@@ -1,3 +1,17 @@
+# Moo Jin's setup instructions
+These instructions can be condensed into fewer steps, but I'm just noting the steps I took to get things running:
+1. Install MuJoCo following the instructions here: https://github.com/openai/mujoco-py#install-mujoco
+2. Duplicate `~/.mujoco/mujoco200_linux/` by making the same exact copy but with another name: `~/.mujoco/mujoco200/`.
+3. Create the `meta` conda environment:
+`conda env create -f conda_env.yml`
+4. Activate the `meta` environment and install `patchelf` into it:
+```
+conda activate meta
+conda install -c anaconda patchelf
+```
+5. Install `mujoco-py` into the environment:
+`pip install -U 'mujoco-py<2.1,>=2.0'`
+
 # Meta-World
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/rlworkgroup/metaworld/blob/master/LICENSE)
 ![Build Status](https://github.com/rlworkgroup/metaworld/workflows/MetaWorld%20CI/badge.svg)
