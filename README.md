@@ -9,7 +9,7 @@ These instructions can be condensed into fewer steps, but I'm just noting the st
     conda activate meta
     conda install -c anaconda patchelf
     ```
-5. Install `mujoco-py` into the environment:
+5. Install `mujoco-py` into the environment (if this step fails, it might be because you didn't install MuJoCo correctly and/or put the license in the right directory):
 `pip install -U 'mujoco-py<2.1,>=2.0'`
 6. Set up the submodule(s):
     ```
