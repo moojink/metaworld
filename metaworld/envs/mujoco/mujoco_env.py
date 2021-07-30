@@ -48,6 +48,7 @@ class MujocoEnv(gym.Env, abc.ABC):
         self.data = self.sim.data
         self.viewer = None
         self._viewers = {}
+        self._view = None # will be set later
 
         self.metadata = {
             'render.modes': ['human'],
@@ -119,13 +120,27 @@ class MujocoEnv(gym.Env, abc.ABC):
                 self._did_see_sim_exception = True
 
     def render(self, offscreen=False, camera_name="corner2", resolution=(640, 480)):
+        # If `camera_name` is "configured_view", we render with whatever view that
+        # self._view is configured to (set during initialization of the environment).
         assert_string = ("camera_name should be one of ",
-                "corner3, corner, corner2, topview, gripperPOV, behindGripper, view_1, view_1_alt view_3")
+                "corner3, corner, corner2, topview, gripperPOV, behindGripper, view_1, view_1_alt view_3", "configured_view")
         assert camera_name in {"corner3", "corner", "corner2", 
-            "topview", "gripperPOV", "behindGripper", "view_1", "view_1_alt", "view_3"}, assert_string
+            "topview", "gripperPOV", "behindGripper", "view_1", "view_1_alt", "view_3", "configured_view"}, assert_string
         if not offscreen:
             self._get_viewer('human').render()
         else:
+            # Use the configured camera view if applicable.
+            if camera_name == "configured_view":
+                if self._view is None:
+                    print("Warning: self._view is None, but env.render() was called with arg "\
+                            "camera_name='configured_view'. You might want to call env.set_camera_view() "\
+                            "immediately after initializing the environment in order to configure the "\
+                            "view. Defaulting to an arbitrary view (e.g., camera_name='view_3').")
+                if self._view == 1:
+                    camera_name = "view_1"
+                    # TODO: "view_1_alt"
+                else:
+                    camera_name = "view_3"
             return self.sim.render(
                 *resolution,
                 mode='offscreen',
@@ -149,3 +164,7 @@ class MujocoEnv(gym.Env, abc.ABC):
 
     def get_body_com(self, body_name):
         return self.data.get_body_xpos(body_name)
+
+    def set_camera_view(self, view):
+        assert view == 1 or view == 3
+        self._view = view
