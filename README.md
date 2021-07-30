@@ -11,6 +11,11 @@ conda install -c anaconda patchelf
 ```
 5. Install `mujoco-py` into the environment:
 `pip install -U 'mujoco-py<2.1,>=2.0'`
+6. Set up the submodule(s):
+    ```
+    git submodule init
+    git submodule update
+    ```
 
 # Meta-World
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/rlworkgroup/metaworld/blob/master/LICENSE)
