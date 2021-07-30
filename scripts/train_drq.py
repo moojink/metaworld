@@ -101,7 +101,8 @@ class Workspace(object):
         self.replay_buffer = ReplayBuffer(self.env.observation_space.shape,
                                           self.env.action_space.shape,
                                           cfg.replay_buffer_capacity,
-                                          self.cfg.image_pad, self.device)
+                                          self.cfg.image_pad, self.device,
+                                          cfg.frame_stack)
 
         self.video_recorder = VideoRecorder(
             self.log_dir if cfg.save_video else None)
@@ -150,8 +151,9 @@ class Workspace(object):
                 self.logger.eval_log('eval/episode', episode, self.step)
                 self.evaluate()
                 self.save_checkpoint()
-            # Check whether the training episode is complete.
-            if done:
+            # Check whether the training episode is complete or the max number of
+            # episode steps is reached.
+            if done or self.env.max_path_length_reached():
                 if self.step > 0:
                     self.logger.log('train/duration',
                                     time.time() - start_time, self.step)

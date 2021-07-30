@@ -172,3 +172,6 @@ class MujocoEnv(gym.Env, abc.ABC):
 
     def set_render_img_size(self, render_img_size):
         self._render_img_size = render_img_size
+
+    def max_path_length_reached(self) -> bool:
+        return getattr(self, 'curr_path_length', 0) >= self.max_path_length
