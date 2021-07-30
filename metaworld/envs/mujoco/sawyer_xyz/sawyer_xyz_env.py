@@ -367,7 +367,11 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         curr_obs = self._get_curr_obs_combined_no_goal()
         # do frame stacking
         if self.isV2:
-            obs = np.hstack((curr_obs, self._prev_obs, pos_goal))
+            prev_obs = self._prev_obs
+            # Since the DrQ code stacks frames anyway, we actually don't need
+            # to stack frames here, so we zero out the previous observations.
+            prev_obs = np.zeros_like(self._prev_obs) # zero out prev obs
+            obs = np.hstack((curr_obs, prev_obs, pos_goal))
         else:
             obs = np.hstack((curr_obs, pos_goal))
         self._prev_obs = curr_obs
