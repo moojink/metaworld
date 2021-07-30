@@ -345,6 +345,7 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
                 for pos, quat in zip(obj_pos_split, obj_quat_split)
             ])
             assert(len(obs_obj_padded) in self._obs_obj_possible_lens)
+            obs_obj_padded = np.zeros_like(obs_obj_padded) # zero out the object obs
             return np.hstack((pos_hand, gripper_distance_apart, obs_obj_padded))
         else:
             # is a v1 environment
