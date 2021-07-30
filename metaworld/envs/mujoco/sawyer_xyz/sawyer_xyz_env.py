@@ -3,6 +3,7 @@ import copy
 import pickle
 
 from gym.spaces import Box
+from gym.spaces import Dict
 from gym.spaces import Discrete
 import mujoco_py
 import numpy as np
@@ -375,7 +376,15 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         else:
             obs = np.hstack((curr_obs, pos_goal))
         self._prev_obs = curr_obs
-        return obs
+
+        # Get image observations.
+        img_obs = self.render(offscreen=True, camera_name="configured_view", resolution=(128, 128))
+
+        # Combine image and proprioceptive observations.
+        return dict(
+            im_rgb = img_obs,
+            proprio = obs
+        )
 
     def _get_obs_dict(self):
         obs = self._get_obs()
@@ -397,14 +406,19 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
             else self.goal_space.high
         gripper_low = -1.
         gripper_high = +1.
-
-        return Box(
+        proprio_obs_space = Box(
             np.hstack((self._HAND_SPACE.low, gripper_low, obj_low, self._HAND_SPACE.low, gripper_low, obj_low, goal_low)),
             np.hstack((self._HAND_SPACE.high, gripper_high, obj_high, self._HAND_SPACE.high, gripper_high, obj_high, goal_high))
         ) if self.isV2 else Box(
             np.hstack((self._HAND_SPACE.low, obj_low, goal_low)),
             np.hstack((self._HAND_SPACE.high, obj_high, goal_high))
         )
+        img_obs_space = Box(0, 255, [3] + [self._render_img_size, self._render_img_size], np.uint8)
+        return Dict(
+            im_rgb = img_obs_space,
+            proprio = proprio_obs_space,
+        )
+
 
     @_assert_task_is_set
     def step(self, action):
@@ -441,7 +455,8 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
             # this does
             return self._last_stable_obs
 
-        reward, info = self.evaluate_state(self._last_stable_obs, action)
+        proprio_obs = self._last_stable_obs['proprio']
+        reward, info = self.evaluate_state(proprio_obs, action)
         return self._last_stable_obs, reward, False, info
 
     def evaluate_state(self, obs, action):
