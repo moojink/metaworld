@@ -141,11 +141,12 @@ class MujocoEnv(gym.Env, abc.ABC):
                     # TODO: "view_1_alt"
                 else:
                     camera_name = "view_3"
-            return self.sim.render(
+            img = self.sim.render(
                 *resolution,
                 mode='offscreen',
                 camera_name=camera_name
             )
+            return np.transpose(img, (2, 0, 1)) # want (3, img_size, img_size), not (img_size, img_size, 3)
 
     def close(self):
         if self.viewer is not None:
