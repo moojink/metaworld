@@ -5,16 +5,20 @@ These instructions can be condensed into fewer steps, but I'm just noting the st
 3. Create the `meta` conda environment:
 `conda env create -f conda_env.yml`
 4. Activate the `meta` environment and install `patchelf` into it:
-```
-conda activate meta
-conda install -c anaconda patchelf
-```
+    ```
+    conda activate meta
+    conda install -c anaconda patchelf
+    ```
 5. Install `mujoco-py` into the environment:
 `pip install -U 'mujoco-py<2.1,>=2.0'`
 6. Set up the submodule(s):
     ```
     git submodule init
     git submodule update
+    ```
+7. Install the metaworld package:
+    ```
+    pip install -e .
     ```
 
 # Meta-World
