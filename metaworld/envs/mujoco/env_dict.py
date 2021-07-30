@@ -581,7 +581,7 @@ def create_hidden_goal_envs():
     for env_name, env_cls in ALL_V2_ENVIRONMENTS.items():
         d = {}
 
-        def initialize(env, view=None, seed=None):
+        def initialize(env, view=None, render_img_size=128, seed=None):
             if seed is not None:
                 st0 = np.random.get_state()
                 np.random.seed(seed)
@@ -591,6 +591,7 @@ def create_hidden_goal_envs():
             env._set_task_called = True
             if view is not None:
                 env.set_camera_view(view)
+            env.set_render_img_size(render_img_size)
             env.reset()
             env._freeze_rand_vec = True
             if seed is not None:

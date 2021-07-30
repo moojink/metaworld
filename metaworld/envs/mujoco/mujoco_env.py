@@ -168,3 +168,6 @@ class MujocoEnv(gym.Env, abc.ABC):
     def set_camera_view(self, view):
         assert view == 1 or view == 3
         self._view = view
+
+    def set_render_img_size(self, render_img_size):
+        self._render_img_size = render_img_size
