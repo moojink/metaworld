@@ -117,7 +117,7 @@ class Workspace(object):
             done = False
             episode_reward = 0
             episode_step = 0
-            while not done:
+            while not done and not self.env.max_path_length_reached():
                 with utils.eval_mode(self.agent):
                     action = self.agent.act(obs, sample=False)
                 obs, reward, done, info = self.env.step(action)
