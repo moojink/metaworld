@@ -1,5 +1,6 @@
 # Logs
 logs
+sbatch_logs
 
 # Plots and figures
 scripts/figures/
