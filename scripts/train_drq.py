@@ -31,7 +31,7 @@ def make_env(cfg):
     """Helper function to create environment"""
     assert cfg.env in {
         'button-press-v2-goal-hidden',
-        'drawer-close-v2-goal-hidden',
+        'drawer-open-v2-goal-hidden',
         'peg-insert-side-v2-goal-hidden',
     }
     env_constructor = ALL_V2_ENVIRONMENTS_GOAL_HIDDEN[cfg.env]
