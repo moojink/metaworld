@@ -163,6 +163,19 @@ class MujocoEnv(gym.Env, abc.ABC):
         self.viewer_setup()
         return self.viewer
 
+    def _get_offscreen_viewer(self, sim):
+        # This function is incomplete/garbage. Just leaving it for reference in case we ever need to mess with the views here.
+        if self.viewer is None:
+            self.viewer = mujoco_py.MjRenderContextOffscreen(sim, -1)
+            self.viewer.cam.azimuth =  205
+            self.viewer.cam.elevation = -20
+            self.viewer.cam.distance = 2.3
+            self.viewer.cam.lookat[0] = 1.1
+            self.viewer.cam.lookat[1] = 1.1 
+            self.viewer.cam.lookat[2] = -0.1
+        return self.viewer
+
+
     def get_body_com(self, body_name):
         return self.data.get_body_xpos(body_name)
 
