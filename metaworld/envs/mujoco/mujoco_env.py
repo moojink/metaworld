@@ -138,7 +138,8 @@ class MujocoEnv(gym.Env, abc.ABC):
                             "view. Defaulting to an arbitrary view (e.g., camera_name='view_3').")
                 if self._view == 1:
                     camera_name = "view_1"
-                    # TODO: "view_1_alt"
+                elif self._view == "1_alt":
+                    camera_name = "view_1_alt"
                 else:
                     camera_name = "view_3"
             img = self.sim.render(
@@ -180,7 +181,7 @@ class MujocoEnv(gym.Env, abc.ABC):
         return self.data.get_body_xpos(body_name)
 
     def set_camera_view(self, view):
-        assert view == 1 or view == 3
+        assert view == 1 or view == 3 or view == "1_alt"
         self._view = view
 
     def set_render_img_size(self, render_img_size):
