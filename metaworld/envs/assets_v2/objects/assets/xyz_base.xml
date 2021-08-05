@@ -149,8 +149,8 @@
                                                       </body>
                                               </body> -->
                                               <body name="hand" pos="0 0 0.12" quat="-1 0 1 0">
-                                                  <!-- <camera name="view_1" mode="track" pos="0 0 0.030" euler="0 3.14159 0" fovy="60" /> --> <!-- on gripper, facing straight forward -->
-                                                  <camera name="view_1" mode="track" pos="0 -0.05 0.030" euler="-0.52 3.14159 0" fovy="60" />
+                                                  <camera name="view_1" mode="track" pos="0 -0.05 0.030" euler="-0.52 3.14159 0" fovy="60" /> <!-- on wrist, angled 30 degrees down -->
+                                                  <camera name="view_1_straight" mode="track" pos="0 0 0.030" euler="0 3.14159 0" fovy="60" /> <!-- on gripper, facing straight forward -->
                                                   <!-- pos translation happens before euler rotation -->
                                                   <!-- pos (a,b,c) ... if orientation: facing robot base ... a: move right, b: move down, c: move backward  -->
                                                   <!-- pos (a,b,c) ... if orientation: facing away from base ... a: move left, b: move down, c: move forward -->
