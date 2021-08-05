@@ -374,7 +374,7 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         self._prev_obs = curr_obs
 
         # Get image observations.
-        img_obs = self.render(offscreen=True, camera_name="configured_view", resolution=(128, 128))
+        img_obs = self.render(offscreen=True, camera_name="configured_view", resolution=(84, 84))
         # img_obs = np.zeros_like(img_obs) # zero out the image obs
 
         # Combine image and proprioceptive observations.
