@@ -29,11 +29,7 @@ torch.backends.cudnn.benchmark = True
 
 def make_env(cfg):
     """Helper function to create environment"""
-    assert cfg.env in {
-        'button-press-v2-goal-hidden',
-        'drawer-open-v2-goal-hidden',
-        'peg-insert-side-v2-goal-hidden',
-    }
+    assert cfg.env in ALL_V2_ENVIRONMENTS_GOAL_HIDDEN.keys()
     env_constructor = ALL_V2_ENVIRONMENTS_GOAL_HIDDEN[cfg.env]
     env = env_constructor(view=cfg.view, render_img_size=cfg.image_size)
     env = utils.FrameStack(env, k=cfg.frame_stack)
