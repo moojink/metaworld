@@ -346,7 +346,6 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
                 for pos, quat in zip(obj_pos_split, obj_quat_split)
             ])
             assert(len(obs_obj_padded) in self._obs_obj_possible_lens)
-            obs_obj_padded = np.zeros_like(obs_obj_padded) # zero out the object obs
             return np.hstack((pos_hand, gripper_distance_apart, obs_obj_padded))
         else:
             # is a v1 environment
@@ -369,9 +368,6 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         # do frame stacking
         if self.isV2:
             prev_obs = self._prev_obs
-            # Since the DrQ code stacks frames anyway, we actually don't need
-            # to stack frames here, so we zero out the previous observations.
-            prev_obs = np.zeros_like(self._prev_obs) # zero out prev obs
             obs = np.hstack((curr_obs, prev_obs, pos_goal))
         else:
             obs = np.hstack((curr_obs, pos_goal))
@@ -379,6 +375,7 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
 
         # Get image observations.
         img_obs = self.render(offscreen=True, camera_name="configured_view", resolution=(128, 128))
+        # img_obs = np.zeros_like(img_obs) # zero out the image obs
 
         # Combine image and proprioceptive observations.
         return dict(
@@ -457,6 +454,19 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
 
         proprio_obs = self._last_stable_obs['proprio']
         reward, info = self.evaluate_state(proprio_obs, action)
+
+        # Zero out everything in the observations except for the first 4 dimensions,
+        # which correspond to the end effector position (first 3 dimensions) and the gripper
+        # distance (the 4th dimension). Things that are zeroed out include:
+        # - position(s) and quaternion(s) of the target object(s) (next 14 dimensions)
+        # - all of the previous observation in the stack of 2 (next 18 dimensions)
+        # - goal position (last 3 dimensions)
+        #
+        # IMPORTANT: Do not do this zeroing-out step before calling self.evaluate_state()
+        #            because the reward function extracts the position of the target
+        #            object from the observations array.
+        self._last_stable_obs['proprio'][4:] = 0
+
         return self._last_stable_obs, reward, False, info
 
     def evaluate_state(self, obs, action):
