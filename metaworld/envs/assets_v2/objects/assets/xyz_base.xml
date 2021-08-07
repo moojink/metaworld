@@ -160,6 +160,7 @@
                                                   <!-- <camera name="view_1_alt" mode="track" pos="0.05 -0.05 0" euler="0 1.5708 0.2" fovy="120" /> -->
                                                   <!-- <camera name="view_1_alt" mode="track" pos="0.05 -0.05 0" euler="-1 2.8 0" fovy="120" /> -->
                                                   <camera name="view_1_alt" mode="track" pos="0.05 -0.05 -0.02" euler="-1 3 0" fovy="100" />
+                                                  <camera name="view_1_alt2" mode="track" pos="-0.05 -0.05 -0.03" euler="-1.1 3 0" fovy="80" />
                                                   <camera name="behindGripper" mode="track" pos="0 0 -0.5" quat="0 1 0 0" fovy="60" />
                                                   <camera name="gripperPOV" mode="track" pos="0 -0.1 0" quat="-1 -1.3 0 0" fovy="90" />
 
