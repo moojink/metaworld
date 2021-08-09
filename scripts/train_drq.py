@@ -113,19 +113,28 @@ class Workspace(object):
             done = False
             episode_reward = 0
             episode_step = 0
+            slack = 20 # num steps to run after success (to make video endings look better)
+            succeeded = False
             while not done and not self.env.max_path_length_reached():
                 with utils.eval_mode(self.agent):
                     action = self.agent.act(obs, sample=False)
                 obs, reward, done, info = self.env.step(action)
                 if episode < 5: # only record 5 videos total
                     self.video_recorder.record(self.env)
-                episode_reward += reward
-                episode_step += 1
+                # Terminate upon success, with some slack steps so that videos don't end too abruptly.
+                if info['success']:
+                    succeeded = True
+                    slack -= 1
+                    if slack <= 0:
+                        done = True
+                else: # Only accumulate episodes when there is no success yet.
+                    episode_reward += reward
+                    episode_step += 1
 
-            if info['success'] == True:
+            if succeeded:
                 num_success += 1
             average_episode_reward += episode_reward
-        self.video_recorder.save(f'{self.step}.mp4')
+        self.video_recorder.save(f'{self.step}.gif')
         average_episode_reward /= self.cfg.num_eval_episodes
         success_rate = num_success / self.cfg.num_eval_episodes
         self.logger.eval_log('eval/episode_reward', average_episode_reward,
@@ -190,6 +199,7 @@ class Workspace(object):
                                       self.step)
 
             next_obs, reward, done, info = self.env.step(action)
+            done = info['success']
 
             # allow infinite bootstrap
             done = float(done)
