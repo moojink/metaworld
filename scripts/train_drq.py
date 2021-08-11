@@ -199,7 +199,6 @@ class Workspace(object):
                                       self.step)
 
             next_obs, reward, done, info = self.env.step(action)
-            done = info['success']
 
             # allow infinite bootstrap
             done = float(done)
