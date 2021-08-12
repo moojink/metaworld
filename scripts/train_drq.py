@@ -147,7 +147,7 @@ class Workspace(object):
         success_rate = num_success / self.cfg.num_eval_episodes
         self.logger.eval_log('eval/episode_reward', average_episode_reward,
                         self.step, log_frequency=1)
-        self.logger.eval_log('eval/steps_until_success', average_episode_reward,
+        self.logger.eval_log('eval/steps_until_success', average_num_steps_until_success,
                         self.step, log_frequency=1)
         self.logger.eval_log('eval/success_rate', success_rate,
                         self.step, log_frequency=1)
