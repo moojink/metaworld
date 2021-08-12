@@ -106,6 +106,7 @@ class Workspace(object):
 
     def evaluate(self):
         average_episode_reward = 0
+        average_num_steps_until_success = 0
         num_success = 0
         self.video_recorder.init(enabled=True)
         for episode in range(self.cfg.num_eval_episodes):
@@ -113,31 +114,40 @@ class Workspace(object):
             done = False
             episode_reward = 0
             episode_step = 0
-            slack = 20 # num steps to run after success (to make video endings look better)
+            slack = 10 # num steps to record after success (to make video endings less abrupt)
             succeeded = False
+            record_num_steps_until_success = True
             while not done and not self.env.max_path_length_reached():
                 with utils.eval_mode(self.agent):
                     action = self.agent.act(obs, sample=False)
                 obs, reward, done, info = self.env.step(action)
-                if episode < 5: # only record 5 videos total
+                # Only record 3 episodes. Record at most X steps per episode. Stop recording
+                # after success (with some slack steps so that the vids don't end too abruptly).
+                if episode < 3 and episode_step < 100 and slack > 0:
                     self.video_recorder.record(self.env)
-                # Terminate upon success, with some slack steps so that videos don't end too abruptly.
                 if info['success']:
                     succeeded = True
+                if succeeded:
                     slack -= 1
-                    if slack <= 0:
-                        done = True
-                else: # Only accumulate episodes when there is no success yet.
-                    episode_reward += reward
-                    episode_step += 1
+                    if record_num_steps_until_success:
+                        average_num_steps_until_success += episode_step # only want to do this once per successful episode
+                        record_num_steps_until_success = False
+                episode_reward += reward
+                episode_step += 1
 
             if succeeded:
                 num_success += 1
             average_episode_reward += episode_reward
         self.video_recorder.save(f'{self.step}.gif')
         average_episode_reward /= self.cfg.num_eval_episodes
+        if num_success > 0:
+            average_num_steps_until_success /= num_success
+        else:
+            average_num_steps_until_success = self.env.max_path_length
         success_rate = num_success / self.cfg.num_eval_episodes
         self.logger.eval_log('eval/episode_reward', average_episode_reward,
+                        self.step, log_frequency=1)
+        self.logger.eval_log('eval/steps_until_success', average_episode_reward,
                         self.step, log_frequency=1)
         self.logger.eval_log('eval/success_rate', success_rate,
                         self.step, log_frequency=1)
@@ -220,3 +230,4 @@ def main(cfg):
 
 if __name__ == '__main__':
     main()
+
