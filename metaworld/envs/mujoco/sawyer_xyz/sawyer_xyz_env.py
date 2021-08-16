@@ -98,9 +98,10 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
             mocap_high=None,
             action_scale=1./100,
             action_rot_scale=1.,
+            random_init_obj_pos=True,
     ):
         super().__init__(model_name, frame_skip=frame_skip)
-        self.random_init = True
+        self.random_init = random_init_obj_pos
         self.action_scale = action_scale
         self.action_rot_scale = action_rot_scale
         self.hand_low = np.array(hand_low)
@@ -112,7 +113,10 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         self.mocap_low = np.hstack(mocap_low)
         self.mocap_high = np.hstack(mocap_high)
         self.curr_path_length = 0
-        self._freeze_rand_vec = True
+        if self.random_init:
+            self._freeze_rand_vec = False
+        else:
+            self._freeze_rand_vec = True
         self._last_rand_vec = None
 
         # We use continuous goal space by default and
@@ -160,7 +164,10 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         assert isinstance(self, data['env_cls'])
         del data['env_cls']
         self._last_rand_vec = data['rand_vec']
-        self._freeze_rand_vec = True
+        if self.random_init:
+            self._freeze_rand_vec = False
+        else:
+            self._freeze_rand_vec = True
         self._last_rand_vec = data['rand_vec']
         del data['rand_vec']
         self._partially_observable = data['partially_observable']

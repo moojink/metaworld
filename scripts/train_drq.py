@@ -31,7 +31,7 @@ def make_env(cfg):
     """Helper function to create environment"""
     assert cfg.env in ALL_V2_ENVIRONMENTS_GOAL_HIDDEN.keys()
     env_constructor = ALL_V2_ENVIRONMENTS_GOAL_HIDDEN[cfg.env]
-    env = env_constructor(view=cfg.view, render_img_size=cfg.image_size)
+    env = env_constructor(train=True, view=cfg.view, random_init_obj_pos=cfg.random_init_obj_pos, render_img_size=cfg.image_size)
     env = utils.FrameStack(env, k=cfg.frame_stack)
     env.seed(cfg.seed)
     assert env.action_space.low.min() >= -1

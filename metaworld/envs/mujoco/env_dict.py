@@ -581,11 +581,11 @@ def create_hidden_goal_envs():
     for env_name, env_cls in ALL_V2_ENVIRONMENTS.items():
         d = {}
 
-        def initialize(env, view=None, render_img_size=128, seed=None):
+        def initialize(env, train, view=None, random_init_obj_pos=True, render_img_size=128, seed=None):
             if seed is not None:
                 st0 = np.random.get_state()
                 np.random.seed(seed)
-            super(type(env), env).__init__()
+            super(type(env), env).__init__(train=train, random_init_obj_pos=random_init_obj_pos)
             env._partially_observable = True
             env._freeze_rand_vec = False
             env._set_task_called = True
@@ -593,7 +593,8 @@ def create_hidden_goal_envs():
                 env.set_camera_view(view)
             env.set_render_img_size(render_img_size)
             env.reset()
-            env._freeze_rand_vec = True
+            if not random_init_obj_pos:
+                env._freeze_rand_vec = True
             if seed is not None:
                 np.random.set_state(st0)
 

@@ -25,20 +25,40 @@ class SawyerPegInsertionSideEnvV2(SawyerXYZEnv):
         - (6/16/20) Used existing goal_low and goal_high values to constrain
             the hole's position, as opposed to hand_low and hand_high
     """
-    def __init__(self):
+    def __init__(self, train, random_init_obj_pos):
         hand_init_pos = (0, 0.6, 0.2)
-
         hand_low = (-0.5, 0.40, 0.05)
         hand_high = (0.5, 1, 0.5)
-        obj_low = (.0, 0.5, 0.02)
-        obj_high = (.2, 0.7, 0.02)
-        goal_low = (-0.35, 0.4, -0.001)
-        goal_high = (-0.25, 0.7, 0.001)
+
+        self.train = train
+        self.train_positions = dict(
+            obj_low = (.05, 0.55, 0.02),
+            obj_high = (.15, 0.65, 0.02),
+            goal_low = (-0.325, 0.5, -0.001),
+            goal_high = (-0.275, 0.6, 0.001),
+        )
+        self.test_positions = dict(
+            obj_low = (.0, 0.5, 0.02),
+            obj_high = (.2, 0.7, 0.02),
+            goal_low = (-0.35, 0.4, -0.001),
+            goal_high = (-0.25, 0.7, 0.001),
+        )
+        if self.train:
+            obj_low = self.train_positions['obj_low']
+            obj_high = self.train_positions['obj_high']
+            goal_low = self.train_positions['goal_low']
+            goal_high = self.train_positions['goal_high']
+        else:
+            obj_low = self.test_positions['obj_low']
+            obj_high = self.test_positions['obj_high']
+            goal_low = self.test_positions['goal_low']
+            goal_high = self.test_positions['goal_high']
 
         super().__init__(
             self.model_name,
             hand_low=hand_low,
             hand_high=hand_high,
+            random_init_obj_pos=random_init_obj_pos,
         )
 
         self.init_config = {
@@ -101,7 +121,7 @@ class SawyerPegInsertionSideEnvV2(SawyerXYZEnv):
         pos_box = self.goal
         if self.random_init:
             pos_peg, pos_box = np.split(self._get_state_rand_vec(), 2)
-            while np.linalg.norm(pos_peg[:2] - pos_box[:2]) < 0.1:
+            while np.linalg.norm(pos_peg[:2] - pos_box[:2]) < 0.1 or self.should_resample_obj_pos(pos_peg, pos_box):
                 pos_peg, pos_box = np.split(self._get_state_rand_vec(), 2)
 
         self.obj_init_pos = pos_peg
@@ -112,6 +132,26 @@ class SawyerPegInsertionSideEnvV2(SawyerXYZEnv):
         self._target_pos = pos_box + np.array([.03, .0, .13])
 
         return self._get_obs()
+
+    def should_resample_obj_pos(self, pos_peg, pos_box):
+        """Returns True when the initial position of either the peg or the box
+        overlaps with the distribution of initial positions used during training.
+        This is so that during test time we sample positions outside of the training
+        distribution."""
+        if self.train:
+            return False # only possibly resample during testing
+        peg_x, peg_y = pos_peg[0], pos_peg[1]
+        box_x, box_y = pos_box[0], pos_box[1]
+        peg_low_x, peg_low_y = self.train_positions['obj_low'][0], self.train_positions['obj_low'][1]
+        peg_high_x, peg_high_y = self.train_positions['obj_high'][0], self.train_positions['obj_high'][1]
+        box_low_x, box_low_y = self.train_positions['goal_low'][0], self.train_positions['goal_low'][1]
+        box_high_x, box_high_y = self.train_positions['goal_high'][0], self.train_positions['goal_high'][1]
+        # Return True when there is an overlap for either object, i.e. when either the peg
+        # or the box lies inside its training-time bounding box.
+        # Only check x and y because z is the same during train and test.
+        return (peg_low_x <= peg_x and peg_x <= peg_high_x and peg_low_y <= peg_y and peg_y <= peg_high_y) or \
+               (box_low_x <= box_x and box_x <= box_high_x and box_low_y <= box_y and box_y <= box_high_y)
+
 
     def compute_reward(self, action, obs):
         tcp = self.tcp_center
