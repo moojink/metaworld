@@ -31,8 +31,8 @@ def make_env(cfg):
     """Helper function to create environment"""
     assert cfg.env in ALL_V2_ENVIRONMENTS_GOAL_HIDDEN.keys()
     env_constructor = ALL_V2_ENVIRONMENTS_GOAL_HIDDEN[cfg.env]
-    env = env_constructor(train=True, view=cfg.view, random_init_obj_pos=cfg.random_init_obj_pos, render_img_size=cfg.image_size)
-    env = utils.FrameStack(env, k=cfg.frame_stack)
+    env = env_constructor(view=cfg.view, train=True, random_init_obj_pos=cfg.random_init_obj_pos, render_img_size=cfg.image_size)
+    env = utils.FrameStack(cfg.view, env, k=cfg.frame_stack)
     env.seed(cfg.seed)
     assert env.action_space.low.min() >= -1
     assert env.action_space.high.max() <= 1
@@ -94,14 +94,17 @@ class Workspace(object):
         ]
         self.agent = hydra.utils.instantiate(cfg.agent)
 
-        self.replay_buffer = ReplayBuffer(self.env.observation_space.shape,
+        self.replay_buffer = ReplayBuffer(cfg.view,
+                                          self.env.observation_space.shape,
                                           self.env.action_space.shape,
                                           cfg.replay_buffer_capacity,
                                           self.cfg.image_pad, self.device,
                                           cfg.frame_stack)
 
         self.video_recorder = VideoRecorder(
-            self.log_dir if cfg.save_video else None)
+            cfg.view,
+            self.log_dir if cfg.save_video else None
+        )
         self.step = 0
 
     def evaluate(self):
@@ -138,7 +141,7 @@ class Workspace(object):
             if succeeded:
                 num_success += 1
             average_episode_reward += episode_reward
-        self.video_recorder.save(f'{self.step}.gif')
+        self.video_recorder.save(f'{self.step}')
         average_episode_reward /= self.cfg.num_eval_episodes
         if num_success > 0:
             average_num_steps_until_success /= num_success

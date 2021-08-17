@@ -34,7 +34,7 @@ def make_env(cfg):
     assert cfg.env in ALL_V2_ENVIRONMENTS_GOAL_HIDDEN.keys()
     env_constructor = ALL_V2_ENVIRONMENTS_GOAL_HIDDEN[cfg.env]
     env = env_constructor(train=False, view=cfg.view, random_init_obj_pos=True, render_img_size=cfg.image_size)
-    env = utils.FrameStack(env, k=cfg.frame_stack)
+    env = utils.FrameStack(cfg.view, env, k=cfg.frame_stack)
     env.seed(cfg.seed)
     assert env.action_space.low.min() >= -1
     assert env.action_space.high.max() <= 1
@@ -62,7 +62,9 @@ class Workspace(object):
         if not os.path.exists(test_vids_save_dir):
             os.makedirs(test_vids_save_dir)
         self.video_recorder = VideoRecorder(
-            test_vids_save_dir if cfg.save_video else None)
+            cfg.view,
+            test_vids_save_dir if cfg.save_video else None
+        )
 
     def evaluate(self):
         average_episode_reward = 0

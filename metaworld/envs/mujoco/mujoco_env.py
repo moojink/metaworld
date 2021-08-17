@@ -147,6 +147,11 @@ class MujocoEnv(gym.Env, abc.ABC):
             )
             return np.transpose(img, (2, 0, 1)) # want (3, img_size, img_size), not (img_size, img_size, 3)
 
+    def render_overwrite(self, offscreen, overwrite_view, resolution):
+        """Used to overwrite self.view, e.g. when we want to render both views."""
+        return self.render(offscreen, overwrite_view, resolution)
+
+
     def close(self):
         if self.viewer is not None:
             glfw.destroy_window(self.viewer.window)
@@ -179,7 +184,7 @@ class MujocoEnv(gym.Env, abc.ABC):
         return self.data.get_body_xpos(body_name)
 
     def set_camera_view(self, view):
-        assert view in (1, 3)
+        assert view in (1, 3, 'both')
         self._view = view
 
     def set_render_img_size(self, render_img_size):

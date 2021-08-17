@@ -91,6 +91,7 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
     def __init__(
             self,
             model_name,
+            view,
             frame_skip=5,
             hand_low=(-0.2, 0.55, 0.05),
             hand_high=(0.2, 0.75, 0.3),
@@ -101,6 +102,7 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
             random_init_obj_pos=True,
     ):
         super().__init__(model_name, frame_skip=frame_skip)
+        self.view = view
         self.random_init = random_init_obj_pos
         self.action_scale = action_scale
         self.action_rot_scale = action_rot_scale
@@ -381,14 +383,21 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         self._prev_obs = curr_obs
 
         # Get image observations.
-        img_obs = self.render(offscreen=True, camera_name="configured_view", resolution=(84, 84))
-        # img_obs = np.zeros_like(img_obs) # zero out the image obs
+        if self.view == 'both':
+            img_obs1 = self.render(offscreen=True, camera_name="view_1", resolution=(84, 84))
+            img_obs3 = self.render(offscreen=True, camera_name="view_3", resolution=(84, 84))
+            return dict(
+                im_rgb1 = img_obs1,
+                im_rgb3 = img_obs3,
+                proprio = obs
+            )
+        else:
+            img_obs = self.render(offscreen=True, camera_name="configured_view", resolution=(84, 84))
+            return dict(
+                im_rgb = img_obs,
+                proprio = obs
+            )
 
-        # Combine image and proprioceptive observations.
-        return dict(
-            im_rgb = img_obs,
-            proprio = obs
-        )
 
     def _get_obs_dict(self):
         obs = self._get_obs()

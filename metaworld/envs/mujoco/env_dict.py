@@ -585,7 +585,7 @@ def create_hidden_goal_envs():
             if seed is not None:
                 st0 = np.random.get_state()
                 np.random.seed(seed)
-            super(type(env), env).__init__(train=train, random_init_obj_pos=random_init_obj_pos)
+            super(type(env), env).__init__(view=view, train=train, random_init_obj_pos=random_init_obj_pos)
             env._partially_observable = True
             env._freeze_rand_vec = False
             env._set_task_called = True

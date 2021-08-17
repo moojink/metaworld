@@ -25,7 +25,7 @@ class SawyerPegInsertionSideEnvV2(SawyerXYZEnv):
         - (6/16/20) Used existing goal_low and goal_high values to constrain
             the hole's position, as opposed to hand_low and hand_high
     """
-    def __init__(self, train, random_init_obj_pos):
+    def __init__(self, view, train, random_init_obj_pos):
         hand_init_pos = (0, 0.6, 0.2)
         hand_low = (-0.5, 0.40, 0.05)
         hand_high = (0.5, 1, 0.5)
@@ -56,6 +56,7 @@ class SawyerPegInsertionSideEnvV2(SawyerXYZEnv):
 
         super().__init__(
             self.model_name,
+            view=view,
             hand_low=hand_low,
             hand_high=hand_high,
             random_init_obj_pos=random_init_obj_pos,
