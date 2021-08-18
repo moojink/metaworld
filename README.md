@@ -2,11 +2,14 @@
 These instructions can be condensed into fewer steps, but I'm just noting the steps I took to get things running:
 1. Install MuJoCo following the instructions here: https://github.com/openai/mujoco-py#install-mujoco
 2. Duplicate `~/.mujoco/mujoco200_linux/` by making the same exact copy but with another name: `~/.mujoco/mujoco200/`.
-3. Create the `meta` conda environment:
-`conda env create -f conda_env.yml`
-4. Activate the `meta` environment and install `patchelf` into it:
+3. Create the `drqv1` or `drqv2` conda environment:
     ```
-    conda activate meta
+    conda env create -f drqv1_conda_env.yml
+    conda env create -f drqv2_conda_env.yml
+    ```
+4. Activate the conda environment and install `patchelf` into it:
+    ```
+    conda activate drqv2
     conda install -c anaconda patchelf
     ```
 5. Install `mujoco-py` into the environment (if this step fails, it might be because you didn't install MuJoCo correctly and/or put the license in the right directory):
@@ -19,6 +22,11 @@ These instructions can be condensed into fewer steps, but I'm just noting the st
 7. Install the metaworld package:
     ```
     pip install -e .
+    ```
+8. If running into a `Cuda driver initialization failed` error, try downgrading PyTorch and CUDA Toolkit. Just doing `conda remove cudatoolkit` should also uninstall pytorch, torchvision, and torchaudio along with it, but if not, uninstall those as well.
+    ```
+    conda remove cudatoolkit
+    conda install pytorch==1.7.1 torchvision==0.8.2 torchaudio==0.7.2 cudatoolkit=10.2 -c pytorch
     ```
 
 # Meta-World
