@@ -162,10 +162,11 @@ class Workspace:
         return self._replay_iter
 
     def eval(self):
-        step, episode, total_reward, num_success, total_num_steps_until_success = 0, 0, 0, 0, 0
+        episode, total_reward, num_success, total_num_steps_until_success = 0, 0, 0, 0
         eval_until_episode = utils.Until(self.cfg.num_eval_episodes)
         self.video_recorder.init(self.eval_env, enabled=True)
         while eval_until_episode(episode):
+            step = 0
             obs = self.eval_env.reset()
             done = False
             slack = 10 # num steps to record after success (to make video endings less abrupt)
@@ -190,8 +191,8 @@ class Workspace:
                 step += 1
                 done = done or self.eval_env.max_path_length_reached()
             episode += 1
-        if succeeded:
-            num_success += 1
+            if succeeded:
+                num_success += 1
         self.video_recorder.save(f'{self.global_frame}.gif')
         if num_success > 0:
             average_num_steps_until_success = total_num_steps_until_success / num_success
@@ -201,9 +202,6 @@ class Workspace:
             log('episode_reward', total_reward / episode)
             log('success_rate', num_success / episode)
             log('num_steps_until_success', average_num_steps_until_success)
-            log('episode_length', step * self.cfg.action_repeat / episode)
-            log('episode', self.global_episode)
-            log('step', self.global_step)
 
     def train(self):
         # predicates
