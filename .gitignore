@@ -150,3 +150,7 @@ MUJOCO_LOG.TXT
 # tool
 Pipfile
 Pipfile.lock
+
+# Slurm scripts
+train_drq*.sh
+test_drq*.sh
