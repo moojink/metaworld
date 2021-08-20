@@ -154,3 +154,4 @@ Pipfile.lock
 # Slurm scripts
 train_drq*.sh
 test_drq*.sh
+train_drqv2-[0-9]*.py
