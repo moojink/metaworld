@@ -132,18 +132,18 @@ class Workspace:
                       self.metaworld_action_spec,
                       specs.Array((1,), np.float32, 'reward'),
                       specs.Array((1,), np.float32, 'discount'))
-        self.replay_storage = ReplayBufferStorage(data_specs,
-                                                  self.log_dir / 'replay_buffer')
+        self.replay_storage = ReplayBufferStorage(self.cfg.view, data_specs, self.log_dir / 'replay_buffer')
 
         self.replay_loader = make_replay_loader(
+            self.cfg.view,
             self.log_dir / 'replay_buffer', self.cfg.replay_buffer_size,
             self.cfg.batch_size, self.cfg.replay_buffer_num_workers,
             self.cfg.save_snapshot, self.cfg.nstep, self.cfg.discount)
         self._replay_iter = None
 
-        self.train_video_recorder = TrainVideoRecorder(self.log_dir if self.cfg.save_train_video else None, render_size=self.cfg.image_size)
-        self.eval_video_recorder = VideoRecorder(self.log_dir if self.cfg.save_video else None, mode='eval', render_size=self.cfg.image_size)
-        self.test_video_recorder = VideoRecorder(self.log_dir if self.cfg.save_video else None, mode='test', render_size=self.cfg.image_size)
+        self.train_video_recorder = TrainVideoRecorder(self.cfg.view, self.log_dir if self.cfg.save_train_video else None, render_size=self.cfg.image_size)
+        self.eval_video_recorder = VideoRecorder(self.cfg.view, self.log_dir if self.cfg.save_video else None, mode='eval', render_size=self.cfg.image_size)
+        self.test_video_recorder = VideoRecorder(self.cfg.view, self.log_dir if self.cfg.save_video else None, mode='test', render_size=self.cfg.image_size)
 
     @property
     def global_step(self):
@@ -205,7 +205,7 @@ class Workspace:
             episode += 1
             if succeeded:
                 num_success += 1
-        video_recorder.save(f'{self.global_frame}.gif')
+        video_recorder.save(f'{self.global_frame}')
         if num_success > 0:
             average_num_steps_until_success = total_num_steps_until_success / num_success
         else:
@@ -228,18 +228,18 @@ class Workspace:
 
         episode_step, episode_reward = 0, 0
         obs = self.train_env.reset()
-        img_obs, proprio_obs = obs
         action = np.zeros(self.metaworld_action_spec.shape) # zero action when resetting env
         reward = 0.0 # zero reward when resetting env
         discount = 1.0 # no discount when resetting env
         done = False
-        self.replay_storage.add(img_obs, proprio_obs, action, reward, discount, done)
+        self.replay_storage.add(obs, action, reward, discount, done)
         metrics = None
+        self.train_video_recorder.init(obs)
         while train_until_step(self.global_step):
             if done:
                 self._global_episode += 1
                 if save_train_video_every_step(self.global_step):
-                    self.train_video_recorder.save(f'{self.global_frame}.gif')
+                    self.train_video_recorder.save(f'{self.global_frame}')
                 # wait until all the metrics schema is populated
                 if metrics is not None:
                     # log stats
@@ -257,13 +257,12 @@ class Workspace:
 
                 # reset env
                 obs = self.train_env.reset()
-                img_obs, proprio_obs = obs
                 action = np.zeros(self.metaworld_action_spec.shape) # zero action when resetting env
                 reward = 0.0 # zero reward when resetting env
                 discount = 1.0 # no discount when resetting env
                 done = False
-                self.replay_storage.add(img_obs, proprio_obs, action, reward, discount, done)
-                self.train_video_recorder.init(img_obs)
+                self.replay_storage.add(obs, action, reward, discount, done)
+                self.train_video_recorder.init(obs)
                 episode_step = 0
                 episode_reward = 0
 
@@ -289,11 +288,10 @@ class Workspace:
 
             # take env step
             obs, reward, done, info = self.train_env.step(action)
-            img_obs, proprio_obs = obs
             episode_reward += reward
             done = done or self.train_env.max_path_length_reached()
-            self.replay_storage.add(img_obs, proprio_obs, action, reward, self.cfg.discount, done)
-            self.train_video_recorder.record(img_obs)
+            self.replay_storage.add(obs, action, reward, self.cfg.discount, done)
+            self.train_video_recorder.record(obs)
             episode_step += 1
             self._global_step += 1
 
