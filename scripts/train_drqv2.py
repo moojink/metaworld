@@ -104,7 +104,8 @@ class Workspace:
         self.logger = Logger(self.log_dir, use_tb=self.cfg.use_tb)
         # create envs
         self.train_env = make_env(self.cfg, train=True)
-        self.eval_env = make_env(self.cfg, train=False)
+        self.eval_env = make_env(self.cfg, train=True)
+        self.test_env = make_env(self.cfg, train=False)
         # create env specs
         self.metaworld_stacked_img_obs_spec = specs.BoundedArray(
             shape=(3 * self.cfg.frame_stack, self.cfg.image_size, self.cfg.image_size),
@@ -140,8 +141,9 @@ class Workspace:
             self.cfg.save_snapshot, self.cfg.nstep, self.cfg.discount)
         self._replay_iter = None
 
-        self.video_recorder = VideoRecorder(self.log_dir if self.cfg.save_video else None, render_size=self.cfg.image_size)
         self.train_video_recorder = TrainVideoRecorder(self.log_dir if self.cfg.save_train_video else None, render_size=self.cfg.image_size)
+        self.eval_video_recorder = VideoRecorder(self.log_dir if self.cfg.save_video else None, mode='eval', render_size=self.cfg.image_size)
+        self.test_video_recorder = VideoRecorder(self.log_dir if self.cfg.save_video else None, mode='test', render_size=self.cfg.image_size)
 
     @property
     def global_step(self):
@@ -161,13 +163,23 @@ class Workspace:
             self._replay_iter = iter(self.replay_loader)
         return self._replay_iter
 
-    def eval(self):
+    def eval(self, mode: str):
+        if mode == 'eval':
+            env = self.eval_env
+            log_type = 'eval'
+            video_recorder = self.eval_video_recorder
+        elif mode == 'test':
+            env = self.test_env
+            log_type = 'test'
+            video_recorder = self.test_video_recorder
+        else:
+            raise ValueError
         episode, total_reward, num_success, total_num_steps_until_success = 0, 0, 0, 0
         eval_until_episode = utils.Until(self.cfg.num_eval_episodes)
-        self.video_recorder.init(self.eval_env, enabled=True)
+        video_recorder.init(env, enabled=True)
         while eval_until_episode(episode):
             step = 0
-            obs = self.eval_env.reset()
+            obs = env.reset()
             done = False
             slack = 10 # num steps to record after success (to make video endings less abrupt)
             succeeded = False
@@ -175,11 +187,11 @@ class Workspace:
             while not done:
                 with torch.no_grad(), utils.eval_mode(self.agent):
                     action = self.agent.act(obs, self.global_step, eval_mode=True)
-                obs, reward, done, info = self.eval_env.step(action)
+                obs, reward, done, info = env.step(action)
                 # Only record 3 episodes. Record at most X steps per episode. Stop recording
                 # after success (with some slack steps so that the vids don't end too abruptly).
                 if episode < 3 and step < 100 and slack > 0:
-                    self.video_recorder.record(self.eval_env)
+                    video_recorder.record(env)
                 if info['success']:
                     succeeded = True
                 if succeeded:
@@ -189,16 +201,16 @@ class Workspace:
                         record_num_steps_until_success = False
                 total_reward += reward
                 step += 1
-                done = done or self.eval_env.max_path_length_reached()
+                done = done or env.max_path_length_reached()
             episode += 1
             if succeeded:
                 num_success += 1
-        self.video_recorder.save(f'{self.global_frame}.gif')
+        video_recorder.save(f'{self.global_frame}.gif')
         if num_success > 0:
             average_num_steps_until_success = total_num_steps_until_success / num_success
         else:
-            average_num_steps_until_success = self.eval_env.max_path_length
-        with self.logger.log_and_dump_ctx(self.global_frame, ty='eval') as log:
+            average_num_steps_until_success = env.max_path_length
+        with self.logger.log_and_dump_ctx(self.global_frame, ty=log_type) as log:
             log('episode_reward', total_reward / episode)
             log('success_rate', num_success / episode)
             log('num_steps_until_success', average_num_steps_until_success)
@@ -259,7 +271,8 @@ class Workspace:
             if eval_every_step(self.global_step):
                 self.logger.log('eval_total_time', self.timer.total_time(),
                                 self.global_frame)
-                self.eval()
+                self.eval(mode='eval')
+                self.eval(mode='test')
                 self.save_snapshot()
 
 
