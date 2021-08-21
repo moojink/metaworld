@@ -302,8 +302,7 @@ class Workspace:
         with snapshot.open('wb') as f:
             torch.save(payload, f)
 
-    def load_snapshot(self):
-        snapshot = self.log_dir / 'snapshot.pt'
+    def load_snapshot(self, snapshot):
         with snapshot.open('rb') as f:
             payload = torch.load(f)
         for k, v in payload.items():
@@ -314,10 +313,10 @@ class Workspace:
 def main(cfg):
     root_dir = Path.cwd()
     workspace = Workspace(cfg)
-    snapshot = root_dir / 'snapshot.pt'
-    if snapshot.exists():
-        print(f'resuming: {snapshot}')
-        workspace.load_snapshot()
+    if cfg.resume_training_from_snapshot:
+        snapshot = Path(cfg.snapshot_path)
+        print(f'resuming training with snapshot: {snapshot}')
+        workspace.load_snapshot(snapshot)
     workspace.train()
 
 
