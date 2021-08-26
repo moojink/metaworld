@@ -143,8 +143,8 @@ class SawyerPegInsertionSideHardEnvV2(SawyerXYZEnv):
                 pos_peg, pos_box = np.split(self._get_state_rand_vec(), 2)
 
         self.obj_init_pos = pos_peg
-        self.peg_head_pos_init = self._get_site_pos('pegHead')
         self._set_obj_xyz(self.obj_init_pos)
+        self.peg_head_pos_init = self._get_site_pos('pegHead')
 
         self.sim.model.body_pos[self.model.body_name2id('box')] = pos_box
         self._target_pos = pos_box + np.array([.03, .0, .13])
@@ -184,6 +184,13 @@ class SawyerPegInsertionSideHardEnvV2(SawyerXYZEnv):
         tcp_opened = obs[3]
         target = self._target_pos
         tcp_to_obj = np.linalg.norm(obj - tcp)
+        tcp_to_obj_init = np.linalg.norm(obj - self.init_tcp)
+        near_peg = reward_utils.tolerance(
+            tcp_to_obj,
+            bounds=(0, 0.1),
+            margin=tcp_to_obj_init,
+            sigmoid='long_tail',
+        )
         scale = np.array([1., 2., 2.])
         #  force agent to pick up object then insert
         obj_to_target = np.linalg.norm((obj_head - target) * scale)
@@ -233,6 +240,9 @@ class SawyerPegInsertionSideHardEnvV2(SawyerXYZEnv):
 
         if obj_to_target <= 0.07:
             reward = 10.
+
+        # Reward moving closer to the peg.
+        reward += near_peg * 0.01
 
         return [reward, tcp_to_obj, tcp_opened, obj_to_target, object_grasped, in_place, collision_boxes, ip_orig]
 
