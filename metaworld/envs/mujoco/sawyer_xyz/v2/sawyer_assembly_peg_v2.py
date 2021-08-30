@@ -48,7 +48,7 @@ class SawyerNutAssemblyEnvV2(SawyerXYZEnv):
 
         self.init_config = {
             'obj_init_pos': np.array([-0.125, 0.42, 0.02], dtype=np.float32),
-            'hand_init_pos': np.array((0, 0.5, 0.2), dtype=np.float32),
+            'hand_init_pos': np.array((-0.125, 0.42, 0.2), dtype=np.float32),
         }
         self.goal = np.array([-0.125, 0.575, 0.1], dtype=np.float32)
         self.obj_init_pos = self.init_config['obj_init_pos']
