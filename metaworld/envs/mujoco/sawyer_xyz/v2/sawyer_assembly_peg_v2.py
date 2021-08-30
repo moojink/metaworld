@@ -9,28 +9,49 @@ from metaworld.envs.mujoco.sawyer_xyz.sawyer_xyz_env import SawyerXYZEnv, _asser
 class SawyerNutAssemblyEnvV2(SawyerXYZEnv):
     WRENCH_HANDLE_LENGTH = 0.02
 
-    def __init__(self):
-        hand_low = (-0.5, 0.40, 0.05)
+    def __init__(self, view, train, random_init_obj_pos):
+        hand_low = (-0.5, 0.20, 0.05)
         hand_high = (0.5, 1, 0.5)
-        obj_low = (0, 0.6, 0.02)
-        obj_high = (0, 0.6, 0.02)
-        goal_low = (-0.1, 0.75, 0.1)
-        goal_high = (0.1, 0.85, 0.1)
+
+
+        self.train = train
+        self.train_positions = dict(
+            obj_low = (-0.155, 0.4, 0.02),
+            obj_high = (-0.095, 0.44, 0.02),
+            goal_low = (-0.155, 0.55, 0.1),
+            goal_high = (-0.095, 0.6, 0.1),
+        )
+        self.test_positions = dict(
+            obj_low = (-0.3, 0.4, 0.02),
+            obj_high = (0.05, 0.44, 0.02),
+            goal_low = (-0.3, 0.55, 0.1),
+            goal_high = (0.05, 0.7, 0.1),
+        )
+        if self.train:
+            obj_low = self.train_positions['obj_low']
+            obj_high = self.train_positions['obj_high']
+            goal_low = self.train_positions['goal_low']
+            goal_high = self.train_positions['goal_high']
+        else:
+            obj_low = self.test_positions['obj_low']
+            obj_high = self.test_positions['obj_high']
+            goal_low = self.test_positions['goal_low']
+            goal_high = self.test_positions['goal_high']
 
         super().__init__(
             self.model_name,
+            view=view,
             hand_low=hand_low,
             hand_high=hand_high,
+            random_init_obj_pos=random_init_obj_pos,
         )
 
         self.init_config = {
-            'obj_init_angle': 0.3,
-            'obj_init_pos': np.array([0, 0.6, 0.02], dtype=np.float32),
-            'hand_init_pos': np.array((0, 0.6, 0.2), dtype=np.float32),
+            'obj_init_pos': np.array([-0.125, 0.42, 0.02], dtype=np.float32),
+            'hand_init_pos': np.array((0, 0.5, 0.2), dtype=np.float32),
         }
-        self.goal = np.array([0.1, 0.8, 0.1], dtype=np.float32)
+        self.goal = np.array([-0.125, 0.575, 0.1], dtype=np.float32)
         self.obj_init_pos = self.init_config['obj_init_pos']
-        self.obj_init_angle = self.init_config['obj_init_angle']
         self.hand_init_pos = self.init_config['hand_init_pos']
 
         self._random_reset_space = Box(
@@ -88,11 +109,12 @@ class SawyerNutAssemblyEnvV2(SawyerXYZEnv):
         self._target_pos = self.goal.copy()
 
         if self.random_init:
-            goal_pos = self._get_state_rand_vec()
-            while np.linalg.norm(goal_pos[:2] - goal_pos[-3:-1]) < 0.1:
-                goal_pos = self._get_state_rand_vec()
-            self.obj_init_pos = goal_pos[:3]
-            self._target_pos = goal_pos[-3:]
+            obj_pos, goal_pos = np.split(self._get_state_rand_vec(), 2)
+            while np.linalg.norm(obj_pos[:2] - goal_pos[:2]) < 0.1 or self.should_resample_obj_pos(obj_pos, goal_pos):
+                obj_pos, goal_pos = np.split(self._get_state_rand_vec(), 2)
+
+        self.obj_init_pos = obj_pos
+        self._target_pos = goal_pos
 
         peg_pos = self._target_pos - np.array([0., 0., 0.05])
         self._set_obj_xyz(self.obj_init_pos)
@@ -100,6 +122,26 @@ class SawyerNutAssemblyEnvV2(SawyerXYZEnv):
         self.sim.model.site_pos[self.model.site_name2id('pegTop')] = self._target_pos
 
         return self._get_obs()
+
+    def should_resample_obj_pos(self, obj_pos, goal_pos):
+        """Returns True when the initial position of either the object or the goal
+        overlaps with the distribution of initial positions used during training.
+        This is so that during test time we sample positions outside of the training
+        distribution."""
+        if self.train:
+            return False # only possibly resample during testing
+        obj_x, obj_y = obj_pos[0], obj_pos[1]
+        goal_x, goal_y = goal_pos[0], goal_pos[1]
+        obj_low_x, obj_low_y = self.train_positions['obj_low'][0], self.train_positions['obj_low'][1]
+        obj_high_x, obj_high_y = self.train_positions['obj_high'][0], self.train_positions['obj_high'][1]
+        goal_low_x, goal_low_y = self.train_positions['goal_low'][0], self.train_positions['goal_low'][1]
+        goal_high_x, goal_high_y = self.train_positions['goal_high'][0], self.train_positions['goal_high'][1]
+        # Return True when there is an overlap for either object, i.e. when either the object
+        # or the goal lies inside its training-time bounding box.
+        # Only check x and y because z is the same during train and test.
+        return (obj_low_x <= obj_x and obj_x <= obj_high_x and obj_low_y <= obj_y and obj_y <= obj_high_y) or \
+               (goal_low_x <= goal_x and goal_x <= goal_high_x and goal_low_y <= goal_y and goal_y <= goal_high_y)
+
 
     @staticmethod
     def _reward_quat(obs):
@@ -147,6 +189,16 @@ class SawyerNutAssemblyEnvV2(SawyerXYZEnv):
         hand = obs[:3]
         wrench = obs[4:7]
         wrench_center = self._get_site_pos('RoundNut')
+        tcp = self.tcp_center
+        wrench_handle = self.data.geom_xpos[self.unwrapped.model.geom_name2id('WrenchHandle')]
+        tcp_to_wrench = np.linalg.norm(wrench_handle - tcp)
+        tcp_to_wrench_init = np.linalg.norm(wrench_handle - self.init_tcp)
+        gripper_near_wrench = reward_utils.tolerance(
+            tcp_to_wrench,
+            bounds=(0, 0.05),
+            margin=tcp_to_wrench_init,
+            sigmoid='long_tail',
+        )
         # `self._gripper_caging_reward` assumes that the target object can be
         # approximated as a sphere. This is not true for the wrench handle, so
         # to avoid re-writing the `self._gripper_caging_reward` we pass in a
@@ -173,6 +225,25 @@ class SawyerNutAssemblyEnvV2(SawyerXYZEnv):
         )
 
         reward = (2.0 * reward_grab + 6.0 * reward_in_place) * reward_quat
+
+        # Reward moving gripper closer to the wrench.
+        reward += gripper_near_wrench
+
+        # # Reward moving wrench closer to peg (only when gripper is holding wrench, which
+        # # we detect by checking reward_grab, which is between 0 and 1).
+        # peg = self._target_pos
+        # wrench_init_pos = self.obj_init_pos
+        # wrench_to_peg = np.linalg.norm(wrench_center - peg)
+        # wrench_to_peg_init = np.linalg.norm(wrench_init_pos - peg)
+        # wrench_near_peg = reward_utils.tolerance(
+        #     wrench_to_peg,
+        #     bounds=(0, 0.1),
+        #     margin=wrench_to_peg_init,
+        #     sigmoid='long_tail',
+        # )
+        # if reward_grab > 0.9:
+        #     reward += wrench_near_peg * 0.2
+
         # Override reward on success
         if success:
             reward = 10.0
