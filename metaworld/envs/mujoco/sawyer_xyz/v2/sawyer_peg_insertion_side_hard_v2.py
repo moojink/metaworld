@@ -34,14 +34,14 @@ class SawyerPegInsertionSideHardEnvV2(SawyerXYZEnv):
         )
         self.test_positions = dict(
             # peg in front of gripper ('far' from robot base)
-            obj_low_far = (-0.1, 0.85, 0.02),
+            obj_low_far = (-0.3, 0.85, 0.02),
             obj_high_far = (0.1, 0.85, 0.02),
             # peg behind gripper ('near' robot base)
-            obj_low_near = (-0.1, 0.35, 0.02),
+            obj_low_near = (-0.3, 0.35, 0.02),
             obj_high_near = (0.1, 0.35, 0.02),
             # box
-            goal_low = (-0.525, 0.4, -0.001),
-            goal_high = (-0.525, 0.7, 0.001),
+            goal_low = (-0.525, 0.3, -0.001),
+            goal_high = (-0.525, 0.75, 0.001),
         )
         if self.train:
             obj_low_far = self.train_positions['obj_low_far']
