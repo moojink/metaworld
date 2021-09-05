@@ -155,3 +155,7 @@ Pipfile.lock
 train_drq*.sh
 test_drq*.sh
 train_drqv2-[0-9]*.py
+
+# Images/GIFs
+*.png
+*.gif
