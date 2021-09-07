@@ -362,6 +362,48 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
             assert(len(obs_obj_padded) in self._obs_obj_possible_lens)
             return np.hstack((pos_hand, obs_obj_padded))
 
+    def _get_angle_between_vecs(self, vec1, vec2):
+        # Returns the angle in radians. Source: https://stackoverflow.com/a/13849249
+        vec1 /= np.linalg.norm(vec1)
+        vec2 /= np.linalg.norm(vec2)
+        return np.arccos(np.clip(np.dot(vec1, vec2), -1.0, 1.0))
+
+    # def _get_switching_mode(self):
+    #     """
+    #     Returns which switching mode to use, depending on:
+    #     - the angle between the wrist camera vector and the vector between the wrist camera position
+    #       and the main target object
+    #     - the angle between the wrist camera vector and the vector between the wrist camera position
+    #       and the second target object ("goal")
+    #     """
+    #     view_1_cam_xpos = self.data.get_camera_xpos('view_1')
+    #     view_1_vec = np.array([0., 0., -1.]) # (roughly) assume view_1 camera ray is parallel to neg z-axis
+    #     view_1_cam_to_obj_vec = self.data.get_geom_xpos('peg') - view_1_cam_xpos # TODO: don't hardcode obj name
+    #     view_1_cam_to_goal_vec = self.data.get_site_xpos('goal') - view_1_cam_xpos
+    #     obj_angle = self._get_angle_between_vecs(view_1_vec, view_1_cam_to_obj_vec)
+    #     goal_angle = self._get_angle_between_vecs(view_1_vec, view_1_cam_to_goal_vec)
+    #     OBJ_ANGLE_THRESHOLD = 1.0472
+    #     GOAL_ANGLE_THRESHOLD = 1.39626
+    #     if obj_angle < OBJ_ANGLE_THRESHOLD and goal_angle < GOAL_ANGLE_THRESHOLD:
+    #         return 'view_1'
+    #     else:
+    #         return 'both'
+
+    def _get_switching_mode(self):
+        view_1_cam_xpos = self.data.get_camera_xpos('view_1')
+        view_1_vec = np.array([0., 0., -1.]) # (roughly) assume view_1 camera ray is parallel to neg z-axis
+        view_1_cam_to_obj_vec = self.data.get_geom_xpos('peg') - view_1_cam_xpos # TODO: don't hardcode obj name
+        view_1_cam_to_goal_vec = self.data.get_site_xpos('goal') - view_1_cam_xpos
+        obj_angle = self._get_angle_between_vecs(view_1_vec, view_1_cam_to_obj_vec)
+        goal_angle = self._get_angle_between_vecs(view_1_vec, view_1_cam_to_goal_vec)
+        OBJ_ANGLE_THRESHOLD = 1.0472
+        GOAL_ANGLE_THRESHOLD = 1.39626
+        if (obj_angle < OBJ_ANGLE_THRESHOLD and not self.object_grasped) or (goal_angle < GOAL_ANGLE_THRESHOLD and self.object_grasped):
+            return 'view_1'
+        else:
+            return 'both'
+
+
     def _get_obs(self):
         """Frame stacks `_get_curr_obs_combined_no_goal()` and concatenates the
             goal position to form a single flat observation.
@@ -386,10 +428,12 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         if self.view == 'both':
             img_obs1 = self.render(offscreen=True, camera_name="view_1", resolution=(84, 84))
             img_obs3 = self.render(offscreen=True, camera_name="view_3", resolution=(84, 84))
+            switching_mode = self._get_switching_mode()
             return dict(
                 im_rgb1 = img_obs1,
                 im_rgb3 = img_obs3,
-                proprio = obs
+                proprio = obs,
+                switching_mode = switching_mode
             )
         else:
             img_obs = self.render(offscreen=True, camera_name="configured_view", resolution=(84, 84))
@@ -482,6 +526,11 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         #            because the reward function extracts the position of the target
         #            object from the observations array.
         self._last_stable_obs['proprio'][4:] = 0
+
+        if self.view == 'both':
+            if self._last_stable_obs['switching_mode'] == 'view_1':
+                # Turn off view 3.
+                self._last_stable_obs['im_rgb3'] = np.zeros_like(self._last_stable_obs['im_rgb3'])
 
         return self._last_stable_obs, reward, False, info
 

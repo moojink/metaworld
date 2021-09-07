@@ -92,6 +92,8 @@ class SawyerPegInsertionSideHardEnvV2(SawyerXYZEnv):
             np.array(goal_high) + np.array([.03, .0, .13])
         )
 
+        self.object_grasped = False
+
     @property
     def model_name(self):
         return full_v2_path_for('sawyer_xyz/sawyer_peg_insertion_side.xml')
@@ -125,6 +127,7 @@ class SawyerPegInsertionSideHardEnvV2(SawyerXYZEnv):
         return Rotation.from_matrix(self.data.get_site_xmat('pegGrasp')).as_quat()
 
     def reset_model(self):
+        self.object_grasped = False
         self._reset_hand()
 
         pos_peg = self.obj_init_pos
@@ -231,6 +234,12 @@ class SawyerPegInsertionSideHardEnvV2(SawyerXYZEnv):
                                                      high_density=True)
         if tcp_to_obj < 0.08 and (tcp_opened > 0) and (obj[2] - 0.01 > self.obj_init_pos[2]):
             object_grasped = 1.
+
+        if object_grasped == 1.:
+            self.object_grasped = True
+        else:
+            self.object_grasped = False
+
         in_place_and_object_grasped = reward_utils.hamacher_product(object_grasped,
                                                                     in_place)
         reward = in_place_and_object_grasped
