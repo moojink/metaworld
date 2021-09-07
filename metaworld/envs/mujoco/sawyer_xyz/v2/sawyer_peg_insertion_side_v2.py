@@ -124,6 +124,7 @@ class SawyerPegInsertionSideEnvV2(SawyerXYZEnv):
             pos_peg, pos_box = np.split(self._get_state_rand_vec(), 2)
             while np.linalg.norm(pos_peg[:2] - pos_box[:2]) < 0.1 or self.should_resample_obj_pos(pos_peg, pos_box):
                 pos_peg, pos_box = np.split(self._get_state_rand_vec(), 2)
+            self.goal = pos_box
 
         self.obj_init_pos = pos_peg
         self.peg_head_pos_init = self._get_site_pos('pegHead')
