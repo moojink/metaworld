@@ -8,23 +8,40 @@ from metaworld.envs.mujoco.sawyer_xyz.sawyer_xyz_env import SawyerXYZEnv, _asser
 
 class SawyerDrawerCloseEnvV2(SawyerXYZEnv):
     _TARGET_RADIUS = 0.04
-    def __init__(self):
+    def __init__(self, view, train, random_init_obj_pos):
 
         hand_low = (-0.5, 0.40, 0.05)
         hand_high = (0.5, 1, 0.5)
-        obj_low = (-0.1, 0.9, 0.0)
-        obj_high = (0.1, 0.9, 0.0)
+
+        self.train = train
+        self.train_positions = dict(
+            obj_low = (-0.2, 0.9, 0.0),
+            obj_high = (0, 0.9, 0.0),
+        )
+        self.test_positions = dict(
+            obj_low = (-0.3, 0.85, 0.0),
+            obj_high = (0.1, 0.9, 0.0),
+        )
+        if self.train:
+            obj_low = self.train_positions['obj_low']
+            obj_high = self.train_positions['obj_high']
+        else:
+            obj_low = self.test_positions['obj_low']
+            obj_high = self.test_positions['obj_high']
+
 
         super().__init__(
             self.model_name,
+            view=view,
             hand_low=hand_low,
             hand_high=hand_high,
+            random_init_obj_pos=random_init_obj_pos,
         )
 
         self.init_config = {
             'obj_init_angle': np.array([0.3, ], dtype=np.float32),
-            'obj_init_pos': np.array([0., 0.9, 0.0], dtype=np.float32),
-            'hand_init_pos': np.array([0, 0.6, 0.2], dtype=np.float32),
+            'obj_init_pos': np.array([-0.1, 0.9, 0.0], dtype=np.float32),
+            'hand_init_pos': np.array([-0.1, 0.6, 0.2], dtype=np.float32),
         }
         self.obj_init_pos = self.init_config['obj_init_pos']
         self.obj_init_angle = self.init_config['obj_init_angle']
@@ -82,9 +99,11 @@ class SawyerDrawerCloseEnvV2(SawyerXYZEnv):
     def reset_model(self):
         self._reset_hand()
 
-        # Compute nightstand position
-        self.obj_init_pos = self._get_state_rand_vec() if self.random_init \
-            else self.init_config['obj_init_pos']
+        if self.random_init:
+            self.obj_init_pos = self._get_state_rand_vec()
+            while self.should_resample_obj_pos(self.obj_init_pos):
+                self.obj_init_pos = self._get_state_rand_vec()
+
         # Set mujoco body to computed position
         self.sim.model.body_pos[self.model.body_name2id(
             'drawer'
@@ -96,6 +115,19 @@ class SawyerDrawerCloseEnvV2(SawyerXYZEnv):
         self.obj_init_pos = self._get_pos_objects()
 
         return self._get_obs()
+
+    def should_resample_obj_pos(self, obj_pos):
+        """Returns True when the initial position of the object
+        overlaps with the distribution of initial positions used during training.
+        This is so that during test time we sample positions outside of the training
+        distribution."""
+        if self.train:
+            return False # only possibly resample during testing
+        obj_x, obj_y = obj_pos[0], obj_pos[1]
+        obj_low_x, obj_low_y = self.train_positions['obj_low'][0], self.train_positions['obj_low'][1]
+        obj_high_x, obj_high_y = self.train_positions['obj_high'][0], self.train_positions['obj_high'][1]
+        # Only check x and y because z is the same during train and test.
+        return obj_low_x <= obj_x and obj_x <= obj_high_x and obj_low_y <= obj_y and obj_y <= obj_high_y
 
     def compute_reward(self, action, obs):
         obj = obs[4:7]
