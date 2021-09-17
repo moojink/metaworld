@@ -500,9 +500,9 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         # V1 environments don't have to implement it
         raise NotImplementedError
 
-    def reset(self):
+    def reset(self, seed=None):
         self.curr_path_length = 0
-        return super().reset()
+        return super().reset(seed=seed)
 
     def _reset_hand(self, steps=50):
         for _ in range(steps):

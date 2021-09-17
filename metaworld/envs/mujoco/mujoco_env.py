@@ -82,10 +82,10 @@ class MujocoEnv(gym.Env, abc.ABC):
         pass
 
     @_assert_task_is_set
-    def reset(self):
+    def reset(self, seed=None):
         self._did_see_sim_exception = False
         self.sim.reset()
-        ob = self.reset_model()
+        ob = self.reset_model(seed=seed)
         if self.viewer is not None:
             self.viewer_setup()
         return ob

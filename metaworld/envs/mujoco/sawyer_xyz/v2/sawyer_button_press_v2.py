@@ -102,10 +102,12 @@ class SawyerButtonPressEnvV2(SawyerXYZEnv):
         qvel[9] = 0
         self.set_state(qpos, qvel)
 
-    def reset_model(self):
+    def reset_model(self, seed=None):
         self._reset_hand()
         self.obj_init_pos = self.init_config['obj_init_pos']
 
+        if seed is not None:
+            np.random.seed(seed=seed) # this ensures that every time we reset, we get the same initial obj positions
 
         if self.random_init:
             self.obj_init_pos = self._get_state_rand_vec()

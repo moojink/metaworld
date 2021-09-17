@@ -124,8 +124,11 @@ class SawyerPegInsertionSideHardEnvV2(SawyerXYZEnv):
     def _get_quat_objects(self):
         return Rotation.from_matrix(self.data.get_site_xmat('pegGrasp')).as_quat()
 
-    def reset_model(self):
+    def reset_model(self, seed=None):
         self._reset_hand()
+
+        if seed is not None:
+            np.random.seed(seed=seed) # this ensures that every time we reset, we get the same initial obj positions
 
         pos_peg = self.obj_init_pos
         pos_box = self.goal

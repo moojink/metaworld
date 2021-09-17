@@ -104,9 +104,12 @@ class SawyerNutAssemblyEnvV2(SawyerXYZEnv):
         obs_dict['state_achieved_goal'] = self.get_body_com('RoundNut')
         return obs_dict
 
-    def reset_model(self):
+    def reset_model(self, seed=None):
         self._reset_hand()
         self._target_pos = self.goal.copy()
+
+        if seed is not None:
+            np.random.seed(seed=seed) # this ensures that every time we reset, we get the same initial obj positions
 
         if self.random_init:
             obj_pos, goal_pos = np.split(self._get_state_rand_vec(), 2)
