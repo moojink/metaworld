@@ -177,9 +177,12 @@ class Workspace:
         episode, total_reward, num_success, total_num_steps_until_success = 0, 0, 0, 0
         eval_until_episode = utils.Until(self.cfg.num_eval_episodes)
         video_recorder.init(env, enabled=True)
-        while eval_until_episode(episode):
+        for seed in range(self.cfg.num_eval_episodes):
             step = 0
-            obs = env.reset()
+            if mode == 'test':
+                obs = env.reset(seed=seed) # IMPORTANT if you want fixed environments
+            else:
+                obs = env.reset() # don't fix environments for eval -- only for test
             done = False
             slack = 10 # num steps to record after success (to make video endings less abrupt)
             succeeded = False
