@@ -13,25 +13,47 @@ class SawyerSoccerEnvV2(SawyerXYZEnv):
     OBJ_RADIUS = 0.013
     TARGET_RADIUS=0.07
 
-    def __init__(self):
+    def __init__(self, view, train, random_init_obj_pos):
 
-        goal_low = (-0.1, 0.8, 0.0)
-        goal_high = (0.1, 0.9, 0.0)
         hand_low = (-0.5, 0.40, 0.05)
         hand_high = (0.5, 1, 0.5)
-        obj_low = (-0.1, 0.6, 0.03)
-        obj_high = (0.1, 0.7, 0.03)
+
+        self.train = train
+        self.train_positions = dict(
+            obj_low = (-0.2, 0.6, 0.03),
+            obj_high = (0., 0.7, 0.03),
+            goal_low = (-0.2, 0.8, 0.0),
+            goal_high = (0., 0.9, 0.0),
+        )
+        self.test_positions = dict(
+            obj_low = (-0.3, 0.6, 0.03),
+            obj_high = (0.1, 0.7, 0.03),
+            goal_low = (-0.3, 0.8, 0.0),
+            goal_high = (0.1, 0.9, 0.0),
+        )
+        if self.train:
+            obj_low = self.train_positions['obj_low']
+            obj_high = self.train_positions['obj_high']
+            goal_low = self.train_positions['goal_low']
+            goal_high = self.train_positions['goal_high']
+        else:
+            obj_low = self.test_positions['obj_low']
+            obj_high = self.test_positions['obj_high']
+            goal_low = self.test_positions['goal_low']
+            goal_high = self.test_positions['goal_high']
 
         super().__init__(
             self.model_name,
+            view=view,
             hand_low=hand_low,
             hand_high=hand_high,
+            random_init_obj_pos=random_init_obj_pos,
         )
 
         self.init_config = {
             'obj_init_pos': np.array([0, 0.6, 0.03]),
             'obj_init_angle': 0.3,
-            'hand_init_pos': np.array([0., .6, .2]),
+            'hand_init_pos': np.array([-0.1, .5, .2]),
         }
         self.goal = np.array([0., 0.9, 0.03])
         self.obj_init_pos = self.init_config['obj_init_pos']
@@ -83,24 +105,47 @@ class SawyerSoccerEnvV2(SawyerXYZEnv):
             self.data.get_body_xmat('soccer_ball')
         ).as_quat()
 
-    def reset_model(self):
+    def reset_model(self, seed=None):
         self._reset_hand()
+
+        if seed is not None:
+            np.random.seed(seed=seed) # this ensures that every time we reset, we get the same initial obj positions
+
         self._target_pos = self.goal.copy()
         self.obj_init_angle = self.init_config['obj_init_angle']
 
         if self.random_init:
-            goal_pos = self._get_state_rand_vec()
-            self._target_pos = goal_pos[3:]
-            while np.linalg.norm(goal_pos[:2] - self._target_pos[:2]) < 0.15:
-                goal_pos = self._get_state_rand_vec()
-                self._target_pos = goal_pos[3:]
-            self.obj_init_pos = np.concatenate((goal_pos[:2], [self.obj_init_pos[-1]]))
-            self.sim.model.body_pos[self.model.body_name2id('goal_whole')] = self._target_pos
+            obj_pos, goal_pos = np.split(self._get_state_rand_vec(), 2)
+            while np.linalg.norm(obj_pos[:2] - goal_pos[:2]) < 0.15 or self.should_resample_obj_pos(obj_pos, goal_pos):
+                obj_pos, goal_pos = np.split(self._get_state_rand_vec(), 2)
 
+        self.obj_init_pos = obj_pos
+        self._target_pos = goal_pos
+        self.sim.model.body_pos[self.model.body_name2id('goal_whole')] = self._target_pos
         self._set_obj_xyz(self.obj_init_pos)
         self.maxPushDist = np.linalg.norm(self.obj_init_pos[:2] - np.array(self._target_pos)[:2])
 
         return self._get_obs()
+
+    def should_resample_obj_pos(self, obj_pos, goal_pos):
+        """Returns True when the initial position of either the object or the goal
+        overlaps with the distribution of initial positions used during training.
+        This is so that during test time we sample positions outside of the training
+        distribution."""
+        if self.train:
+            return False # only possibly resample during testing
+        obj_x, obj_y = obj_pos[0], obj_pos[1]
+        goal_x, goal_y = goal_pos[0], goal_pos[1]
+        obj_low_x, obj_low_y = self.train_positions['obj_low'][0], self.train_positions['obj_low'][1]
+        obj_high_x, obj_high_y = self.train_positions['obj_high'][0], self.train_positions['obj_high'][1]
+        goal_low_x, goal_low_y = self.train_positions['goal_low'][0], self.train_positions['goal_low'][1]
+        goal_high_x, goal_high_y = self.train_positions['goal_high'][0], self.train_positions['goal_high'][1]
+        # Return True when there is an overlap for either object, i.e. when either the object
+        # or the goal lies inside its training-time bounding box.
+        # Only check x and y because z is the same during train and test.
+        return (obj_low_x <= obj_x and obj_x <= obj_high_x and obj_low_y <= obj_y and obj_y <= obj_high_y) or \
+               (goal_low_x <= goal_x and goal_x <= goal_high_x and goal_low_y <= goal_y and goal_y <= goal_high_y)
+
 
     def _gripper_caging_reward(self, action, obj_position, obj_radius):
         pad_success_margin = 0.05
@@ -182,6 +227,14 @@ class SawyerSoccerEnvV2(SawyerXYZEnv):
         target_to_obj = np.linalg.norm((obj - self._target_pos) * x_scaling)
         target_to_obj_init = np.linalg.norm((obj - self.obj_init_pos) * x_scaling)
 
+        tcp_to_obj_init = np.linalg.norm(obj - self.init_tcp)
+        near_ball = reward_utils.tolerance(
+            tcp_to_obj,
+            bounds=(0, 0.1),
+            margin=tcp_to_obj_init,
+            sigmoid='long_tail',
+        )
+
         in_place = reward_utils.tolerance(
             target_to_obj,
             bounds=(0, self.TARGET_RADIUS),
@@ -196,6 +249,9 @@ class SawyerSoccerEnvV2(SawyerXYZEnv):
         object_grasped = self._gripper_caging_reward(action, obj, self.OBJ_RADIUS)
 
         reward = (3*object_grasped) + (6.5*in_place)
+
+        # Reward moving closer to the soccer ball.
+        reward += near_ball
 
         if target_to_obj < self.TARGET_RADIUS:
             reward = 10.
