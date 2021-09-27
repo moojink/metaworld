@@ -391,6 +391,14 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
                 im_rgb3 = img_obs3,
                 proprio = obs
             )
+        elif self.view == 'double_view_3':
+            img_obs1 = self.render(offscreen=True, camera_name="view_3_alt", resolution=(84, 84))
+            img_obs3 = self.render(offscreen=True, camera_name="view_3", resolution=(84, 84))
+            return dict(
+                im_rgb1 = img_obs1,
+                im_rgb3 = img_obs3,
+                proprio = obs
+            )
         else:
             img_obs = self.render(offscreen=True, camera_name="configured_view", resolution=(84, 84))
             return dict(

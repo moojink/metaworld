@@ -123,9 +123,9 @@ class MujocoEnv(gym.Env, abc.ABC):
         # If `camera_name` is "configured_view", we render with whatever view that
         # self._view is configured to (set during initialization of the environment).
         assert_string = ("camera_name should be one of ",
-                "corner3, corner, corner2, topview, gripperPOV, behindGripper, view_1, view_1_alt, view_3", "configured_view")
+                "corner3, corner, corner2, topview, gripperPOV, behindGripper, view_1, view_1_alt, view_3, view_3_alt", "configured_view")
         assert camera_name in {"corner3", "corner", "corner2", 
-            "topview", "gripperPOV", "behindGripper", "view_1", "view_1_alt", "view_3", "configured_view"}, assert_string
+            "topview", "gripperPOV", "behindGripper", "view_1", "view_1_alt", "view_3", "view_3_alt", "configured_view"}, assert_string
         if not offscreen:
             self._get_viewer('human').render()
         else:
@@ -140,8 +140,10 @@ class MujocoEnv(gym.Env, abc.ABC):
                     camera_name = "view_1"
                 elif self._view == "1_alt":
                     camera_name = "view_1_alt"
-                else:
+                elif self._view == 3:
                     camera_name = "view_3"
+                else:
+                    camera_name = "view_3_alt"
             img = self.sim.render(
                 *resolution,
                 mode='offscreen',
@@ -186,7 +188,7 @@ class MujocoEnv(gym.Env, abc.ABC):
         return self.data.get_body_xpos(body_name)
 
     def set_camera_view(self, view):
-        assert view in (1, '1_alt', 3, 'both')
+        assert view in (1, '1_alt', 3, '3_alt', 'both', 'double_view_3')
         self._view = view
 
     def set_render_img_size(self, render_img_size):
