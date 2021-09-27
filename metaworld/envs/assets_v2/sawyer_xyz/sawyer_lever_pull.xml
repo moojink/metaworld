@@ -13,7 +13,7 @@
         </body>
 
         <site name="goal" pos="0.12 0.88 0.05" size="0.02"
-              rgba=".8 0 0 1"/>
+              rgba=".8 0 0 0"/>
     </worldbody>
 
     <actuator>

@@ -19,8 +19,8 @@ class SawyerDrawerCloseEnvV2(SawyerXYZEnv):
             obj_high = (0, 0.9, 0.0),
         )
         self.test_positions = dict(
-            obj_low = (-0.3, 0.85, 0.0),
-            obj_high = (0.1, 0.9, 0.0),
+            obj_low = (-0.4, 0.85, 0.0),
+            obj_high = (0.2, 0.9, 0.0),
         )
         if self.train:
             obj_low = self.train_positions['obj_low']
@@ -41,7 +41,7 @@ class SawyerDrawerCloseEnvV2(SawyerXYZEnv):
         self.init_config = {
             'obj_init_angle': np.array([0.3, ], dtype=np.float32),
             'obj_init_pos': np.array([-0.1, 0.9, 0.0], dtype=np.float32),
-            'hand_init_pos': np.array([-0.1, 0.6, 0.2], dtype=np.float32),
+            'hand_init_pos': np.array([-0.1, 0.4, 0.2], dtype=np.float32),
         }
         self.obj_init_pos = self.init_config['obj_init_pos']
         self.obj_init_angle = self.init_config['obj_init_angle']
@@ -96,8 +96,11 @@ class SawyerDrawerCloseEnvV2(SawyerXYZEnv):
         qpos[9] = pos
         self.set_state(qpos, qvel)
 
-    def reset_model(self):
+    def reset_model(self, seed=None):
         self._reset_hand()
+
+        if seed is not None:
+            np.random.seed(seed=seed) # this ensures that every time we reset, we get the same initial obj positions
 
         if self.random_init:
             self.obj_init_pos = self._get_state_rand_vec()
