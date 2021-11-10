@@ -490,6 +490,7 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         #            because the reward function extracts the position of the target
         #            object from the observations array.
         self._last_stable_obs['proprio'][4:] = 0
+        self._last_stable_obs['proprio'][:3] = 0 # zero out end-effector pos
 
         return self._last_stable_obs, reward, False, info
 
