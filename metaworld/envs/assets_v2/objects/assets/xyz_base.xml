@@ -155,7 +155,8 @@
                                                   <!-- pos (a,b,c) ... if orientation: facing away from base ... a: move left, b: move down, c: move forward -->
                                                   <!-- assuming coord axes such as x: right, y: back, z: up ... -->
                                                   <!-- euler (a,b,c) ... rotates a then b then c ... a: rotate around x clockwise (i.e. roll forward), b: rotate around z counterclockwise (i.e. turn left) , c: rotate around y counterclockwise (i.e. roll left) -->
-                                                  <camera name="view_1" mode="track" pos="-0.05 -0.05 -0.03" euler="-1.1 3 0" fovy="100" />
+                                                  <!-- <camera name="view_1" mode="track" pos="-0.05 -0.05 -0.03" euler="-1.1 3 0" fovy="100" /> -->
+                                                  <camera name="view_1" mode="fixed" pos="-0.05 0 -0.05" euler="0 -1.4 3.14159" fovy="115" />
                                                   <camera name="view_1_alt" mode="track" pos="0.05 -0.06 0" euler="1.67 0 3.14159" fovy="100" />
                                                   <camera name="behindGripper" mode="track" pos="0 0 -0.5" quat="0 1 0 0" fovy="60" />
                                                   <camera name="gripperPOV" mode="track" pos="0 -0.1 0" quat="-1 -1.3 0 0" fovy="90" />

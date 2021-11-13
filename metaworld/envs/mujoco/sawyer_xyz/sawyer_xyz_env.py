@@ -98,7 +98,7 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
             mocap_low=None,
             mocap_high=None,
             action_scale=1./100,
-            action_rot_scale=1.,
+            action_rot_scale=1./20,
             random_init_obj_pos=True,
     ):
         super().__init__(model_name, frame_skip=frame_skip)
@@ -131,9 +131,18 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         self.init_left_pad = self.get_body_com('leftpad')
         self.init_right_pad = self.get_body_com('rightpad')
 
+        # self.action_space = Box(
+        #     # min
+        #     np.array([-1, -1, -1, -1*np.pi, 0, 0, -1]), # xyz pos (3), euler angle (3), gripper width (1)
+        #     # max
+        #     np.array([+1, +1, +1, np.pi, 0, 0, +1]),
+        # )
+
         self.action_space = Box(
-            np.array([-1, -1, -1, -1]),
-            np.array([+1, +1, +1, +1]),
+            # min
+            np.array([-1, -1, -1, -1, -1]), # xyz pos (3), euler angle (3), gripper width (1)
+            # max
+            np.array([+1, +1, +1, 1, +1]),
         )
 
         self.isV2 = "V2" in type(self).__name__
@@ -177,10 +186,57 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         self._set_task_inner(**data)
         self.reset()
 
+    def euler2quat(self, euler):
+        """ Convert Euler Angles to Quaternions.
+        Source: https://github.com/openai/mujoco-worldgen/blob/master/mujoco_worldgen/util/rotation.py
+        """
+        euler = np.asarray(euler, dtype=np.float64)
+        assert euler.shape[-1] == 3, "Invalid shape euler {}".format(euler)
+
+        ai, aj, ak = euler[..., 2] / 2, -euler[..., 1] / 2, euler[..., 0] / 2
+        si, sj, sk = np.sin(ai), np.sin(aj), np.sin(ak)
+        ci, cj, ck = np.cos(ai), np.cos(aj), np.cos(ak)
+        cc, cs = ci * ck, ci * sk
+        sc, ss = si * ck, si * sk
+
+        quat = np.empty(euler.shape[:-1] + (4,), dtype=np.float64)
+        quat[..., 0] = cj * cc + sj * ss
+        quat[..., 3] = cj * sc - sj * cs
+        quat[..., 2] = -(cj * ss + sj * cc)
+        quat[..., 1] = cj * cs - sj * sc
+        return quat
+
+    def quat_mul(self, quat0, quat1):
+        """ Multiply two quaternions.
+        Source: https://github.com/openai/mujoco-worldgen/blob/master/mujoco_worldgen/util/rotation.py
+        """
+        w0 = quat0[..., 0]
+        x0 = quat0[..., 1]
+        y0 = quat0[..., 2]
+        z0 = quat0[..., 3]
+
+        w1 = quat1[..., 0]
+        x1 = quat1[..., 1]
+        y1 = quat1[..., 2]
+        z1 = quat1[..., 3]
+        w = w0 * w1 - x0 * x1 - y0 * y1 - z0 * z1
+        x = w0 * x1 + x0 * w1 + y0 * z1 - z0 * y1
+        y = w0 * y1 + y0 * w1 + z0 * x1 - x0 * z1
+        z = w0 * z1 + z0 * w1 + x0 * y1 - y0 * x1
+        quat = np.array([w, x, y, z])
+        return quat
+
     def set_xyz_action(self, action):
-        action = np.clip(action, -1, 1)
-        pos_delta = action * self.action_scale
+        # Position
+        action[:3] = np.clip(action[:3], -1, 1)
+        pos_delta = action[:3] * self.action_scale
         new_mocap_pos = self.data.mocap_pos + pos_delta[None]
+
+        # Orientation (Rotation around Z-axis)
+        ori_delta_euler = np.array([action[3], 0, 0]) * self.action_rot_scale
+        ori_delta_quat = self.euler2quat(ori_delta_euler)
+        new_mocap_quat = self.quat_mul(self.data.mocap_quat, ori_delta_quat)
+        new_mocap_quat = np.reshape(new_mocap_quat, (4,))
 
         new_mocap_pos[0, :] = np.clip(
             new_mocap_pos[0, :],
@@ -188,7 +244,7 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
             self.mocap_high,
         )
         self.data.set_mocap_pos('mocap', new_mocap_pos)
-        self.data.set_mocap_quat('mocap', np.array([1, 0, 1, 0]))
+        self.data.set_mocap_quat('mocap', new_mocap_quat)
 
     def discretize_goal_space(self, goals):
         assert False
@@ -203,6 +259,26 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         qpos[9:12] = pos.copy()
         qvel[9:15] = 0
         self.set_state(qpos, qvel)
+
+    def _set_obj_xyz_quat(self, pos, euler_angle):
+        quat = self.euler2quat(euler_angle)
+        qpos = self.data.qpos.flat.copy()
+        qvel = self.data.qvel.flat.copy()
+        qpos[9:12] = pos.copy()
+        qpos[12:16] = quat.copy()
+        qvel[9:15] = 0
+        self.set_state(qpos, qvel)
+
+    def quat_create(self, axis, angle):
+        """
+            Create a quaternion from an axis and angle.
+            :param axis The three dimensional axis
+            :param angle The angle in radians
+            :return: A 4-d array containing the components of a quaternion.
+        """
+        quat = np.zeros([4], dtype='float')
+        mujoco_py.functions.mju_axisAngle2Quat(quat, axis, angle)
+        return quat
 
     def _get_site_pos(self, siteName):
         _id = self.model.site_names.index(siteName)
@@ -443,7 +519,7 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
 
     @_assert_task_is_set
     def step(self, action):
-        self.set_xyz_action(action[:3])
+        self.set_xyz_action(action)
         self.do_simulation([action[-1], -action[-1]])
         self.curr_path_length += 1
 
@@ -515,7 +591,10 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
     def _reset_hand(self, steps=50):
         for _ in range(steps):
             self.data.set_mocap_pos('mocap', self.hand_init_pos)
-            self.data.set_mocap_quat('mocap', np.array([1, 0, 1, 0]))
+            init_euler_transform = np.array([np.pi/2, 0, 0])
+            init_quat_transform = self.euler2quat(init_euler_transform)
+            new_mocap_quat = self.quat_mul(np.array([1, 0, 1, 0]), init_quat_transform)
+            self.data.set_mocap_quat('mocap', new_mocap_quat)
             self.do_simulation([-1, 1], self.frame_skip)
         self.init_tcp = self.tcp_center
 
